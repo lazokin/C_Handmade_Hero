@@ -34,7 +34,7 @@ struct win32_sound_output
 
 constexpr auto PI32 = 3.14159265359f;
 
-static BOOL GlobalRunning = true;
+static BOOL GlobalRunning;
 static win32_offscreen_buffer GlobalScreenBuffer;
 static LPDIRECTSOUNDBUFFER GlobalSoundBuffer;
 
@@ -380,6 +380,10 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 INT WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, INT nCmdShow)
 {
+	LARGE_INTEGER Frequency;
+	QueryPerformanceFrequency(&Frequency);
+	INT64 CounterFrequency = Frequency.QuadPart;
+
 	Win32LoadXInput();
 
 	WNDCLASS wc = {};
@@ -429,8 +433,16 @@ INT WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 	Win32FillSoundBuffer(&SoundOutput, 0, SoundOutput.LatencySampleCount * SoundOutput.BytesPerSample);
 	GlobalSoundBuffer->Play(0, 0, DSBPLAY_LOOPING);
 
+	GlobalRunning = true;
+
+	LARGE_INTEGER PreviousCountStruct;
+	QueryPerformanceCounter(&PreviousCountStruct);
+	UINT64 PreviousCounts = PreviousCountStruct.QuadPart;
+	UINT64 PreviousCycles = __rdtsc();
+	
 	while (GlobalRunning)
 	{
+
 		// handle window messages
 		MSG msg = { };
 		while (PeekMessage(&msg, hWnd, 0, 0, PM_REMOVE))
@@ -512,6 +524,25 @@ INT WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		win32_dimensions dimensions = Win32GetClientDimensions(hWnd);
 		Win32DisplayBufferInWindow(hdc, dimensions.width, dimensions.height, &GlobalScreenBuffer);
 		ReleaseDC(hWnd, hdc);
+
+		LARGE_INTEGER CurrentCountStruct;
+		QueryPerformanceCounter(&CurrentCountStruct);
+		UINT64 CurrentCounts = CurrentCountStruct.QuadPart;
+		UINT64 CurrentCycles = __rdtsc();
+
+		UINT64 CountsElapsed = CurrentCounts - PreviousCounts;
+		UINT64 CyclesElapsed = CurrentCycles - PreviousCycles;
+
+		INT32 MillisPerFrame  = (INT32)((1000 * CountsElapsed) / CounterFrequency);
+		INT32 FramesPerSecond = (INT32)(CounterFrequency / CountsElapsed);
+		INT32 MCyclesPerFrame = (INT32)(CyclesElapsed / (1000 * 1000));
+
+		WCHAR Buffer[256];
+		wsprintf(Buffer, L"%d ms, %d FPS, %d MCycles\n", MillisPerFrame, FramesPerSecond, MCyclesPerFrame);
+		OutputDebugString(Buffer);
+
+		PreviousCounts = CurrentCounts;
+		PreviousCycles = CurrentCycles;
 	}
 
 	return 0;
