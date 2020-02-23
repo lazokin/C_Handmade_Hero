@@ -1,3 +1,5 @@
+#include "handmade.h"
+
 #include <Windows.h>
 #include <xinput.h>
 #include <dsound.h>
@@ -5,18 +7,18 @@
 
 struct win32_offscreen_buffer
 {
-	BITMAPINFO info;
-	LPVOID memory;
-	INT width;
-	INT height;
-	INT pitch;
-	INT bytesPerPixel;
+	BITMAPINFO Info;
+	LPVOID Memory;
+	INT Width;
+	INT Height;
+	INT Pitch;
+	INT BytesPerPixel;
 };
 
 struct win32_dimensions
 {
-	INT width;
-	INT height;
+	INT Width;
+	INT Height;
 };
 
 struct win32_sound_output
@@ -85,7 +87,7 @@ static void Win32LoadXInput(void)
 	}
 }
 
-static void Win32InitDSound(HWND hWnd, INT32 SamplesPerSecond, INT32 BufferSize)
+static void Win32InitDSound(HWND HWnd, INT32 SamplesPerSecond, INT32 BufferSize)
 {
 	HMODULE DSoundLibrary = LoadLibrary(L"dsound.dll");;
 
@@ -105,7 +107,7 @@ static void Win32InitDSound(HWND hWnd, INT32 SamplesPerSecond, INT32 BufferSize)
 			WaveFormat.nBlockAlign = (WaveFormat.nChannels * WaveFormat.wBitsPerSample) / 8;
 			WaveFormat.nAvgBytesPerSec = WaveFormat.nSamplesPerSec * WaveFormat.nBlockAlign;
 
-			if (SUCCEEDED(DirectSound->SetCooperativeLevel(hWnd, DSSCL_PRIORITY)))
+			if (SUCCEEDED(DirectSound->SetCooperativeLevel(HWnd, DSSCL_PRIORITY)))
 			{
 				DSBUFFERDESC BufferDesc = {};
 				BufferDesc.dwSize = sizeof(BufferDesc);
@@ -195,66 +197,48 @@ static void Win32FillSoundBuffer(win32_sound_output* SoundOutput, DWORD Offset, 
 	}
 }
 
-static win32_dimensions Win32GetClientDimensions(HWND hWnd)
+static win32_dimensions Win32GetClientDimensions(HWND HWnd)
 {
 	win32_dimensions result;
 
 	RECT clientRect;
-	GetClientRect(hWnd, &clientRect);
-	result.width = clientRect.right - clientRect.left;
-	result.height = clientRect.bottom - clientRect.top;
+	GetClientRect(HWnd, &clientRect);
+	result.Width = clientRect.right - clientRect.left;
+	result.Height = clientRect.bottom - clientRect.top;
 
 	return result;
 };
 
-static void FunRender(win32_offscreen_buffer* buffer, INT xOffset, INT yOffset)
+static void Win32ResizeDIBSection(win32_offscreen_buffer* Buffer, INT Width, INT Height)
 {
-	PUINT8 row = (PUINT8) buffer->memory;
-	for (INT y = 0; y < buffer->height; y++)
+	if (Buffer->Memory)
 	{
-		PUINT32 pixel = (PUINT32) row;
-		for (INT x = 0; x < buffer->width; x++)
-		{
-			UINT8 blue = (x + xOffset);
-			UINT8 green = (y + yOffset);
-			*pixel++ = (green << 8 | blue);
-		}
-		row += buffer->pitch;
-	}
-}
-
-static void Win32ResizeDIBSection(win32_offscreen_buffer* buffer, INT width, INT height)
-{
-	if (buffer->memory)
-	{
-		VirtualFree(buffer->memory, NULL, MEM_RELEASE);
+		VirtualFree(Buffer->Memory, NULL, MEM_RELEASE);
 	}
 
-	buffer->width = width;
-	buffer->height = height;
-	buffer->bytesPerPixel = 4;
-	buffer->pitch = buffer->width * buffer->bytesPerPixel;
+	Buffer->Width = Width;
+	Buffer->Height = Height;
+	Buffer->BytesPerPixel = 4;
+	Buffer->Pitch = Buffer->Width * Buffer->BytesPerPixel;
 
-	buffer->info.bmiHeader.biSize = sizeof(buffer->info.bmiHeader);
-	buffer->info.bmiHeader.biWidth = buffer->width;
-	buffer->info.bmiHeader.biHeight = -buffer->height;
-	buffer->info.bmiHeader.biPlanes = 1;
-	buffer->info.bmiHeader.biBitCount = 32;
-	buffer->info.bmiHeader.biCompression = BI_RGB;
+	Buffer->Info.bmiHeader.biSize = sizeof(Buffer->Info.bmiHeader);
+	Buffer->Info.bmiHeader.biWidth = Buffer->Width;
+	Buffer->Info.bmiHeader.biHeight = -Buffer->Height;
+	Buffer->Info.bmiHeader.biPlanes = 1;
+	Buffer->Info.bmiHeader.biBitCount = 32;
+	Buffer->Info.bmiHeader.biCompression = BI_RGB;
 
-	buffer->memory = VirtualAlloc(NULL, buffer->width * buffer->height * buffer->bytesPerPixel, MEM_COMMIT, PAGE_READWRITE);
+	Buffer->Memory = VirtualAlloc(NULL, Buffer->Width * Buffer->Height * Buffer->BytesPerPixel, MEM_COMMIT, PAGE_READWRITE);
 }
 
-static void Win32DisplayBufferInWindow(
-	HDC hdc, INT clientWidth, INT clientHeight,
-	win32_offscreen_buffer* buffer)
+static void Win32DisplayBufferInWindow(HDC hdc, INT ClientWidth, INT ClientHeight, win32_offscreen_buffer* Buffer)
 {
 	StretchDIBits(
 		hdc,
-		0, 0, clientWidth, clientHeight,
-		0, 0, buffer->width, buffer->height,
-		buffer->memory,
-		&buffer->info,
+		0, 0, ClientWidth, ClientHeight,
+		0, 0, Buffer->Width, Buffer->Height,
+		Buffer->Memory,
+		&Buffer->Info,
 		DIB_RGB_COLORS,
 		SRCCOPY);
 }
@@ -363,7 +347,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		PAINTSTRUCT ps;
 		HDC hdc = BeginPaint(hWnd, &ps);
 		win32_dimensions dimensions = Win32GetClientDimensions(hWnd);
-		Win32DisplayBufferInWindow(hdc, dimensions.width, dimensions.height, &GlobalScreenBuffer);
+		Win32DisplayBufferInWindow(hdc, dimensions.Width, dimensions.Height, &GlobalScreenBuffer);
 		EndPaint(hWnd, &ps);
 	}
 	return 0;
@@ -417,8 +401,8 @@ INT WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 		return 0;
 	}
 
-	INT xOffset = 0;
-	INT yOffset = 0;
+	INT XOffset = 0;
+	INT YOffset = 0;
 
 	win32_sound_output SoundOutput = {};
 	SoundOutput.SampleRate = 48000;
@@ -484,8 +468,8 @@ INT WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 				INT16 StickX = gamepad->sThumbLX;
 				INT16 StickY = gamepad->sThumbLY;
 
-				xOffset += StickX / XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE;
-				yOffset += StickY / XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE;
+				XOffset += StickX / XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE;
+				YOffset -= StickY / XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE;
 
 				SoundOutput.Tone = 512 + (INT)(256.0f * (FLOAT)StickY / 30000.0f);
 				SoundOutput.WavePeriod = SoundOutput.SampleRate / SoundOutput.Tone;
@@ -497,7 +481,12 @@ INT WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 			}
 		}
 
-		FunRender(&GlobalScreenBuffer, xOffset, yOffset);
+		game_offscreen_buffer GameScreenBuffer = {};
+		GameScreenBuffer.Memory = GlobalScreenBuffer.Memory;
+		GameScreenBuffer.Width = GlobalScreenBuffer.Width;
+		GameScreenBuffer.Height = GlobalScreenBuffer.Height;
+		GameScreenBuffer.Pitch = GlobalScreenBuffer.Pitch;
+		GameUpdateAndRender(&GameScreenBuffer, XOffset, YOffset);
 
 		DWORD CurrentPlayCursor;
 		DWORD CurrentWriteCursor;
@@ -522,7 +511,7 @@ INT WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 
 		HDC hdc = GetDC(hWnd);
 		win32_dimensions dimensions = Win32GetClientDimensions(hWnd);
-		Win32DisplayBufferInWindow(hdc, dimensions.width, dimensions.height, &GlobalScreenBuffer);
+		Win32DisplayBufferInWindow(hdc, dimensions.Width, dimensions.Height, &GlobalScreenBuffer);
 		ReleaseDC(hWnd, hdc);
 
 		LARGE_INTEGER CurrentCountStruct;
