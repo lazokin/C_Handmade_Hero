@@ -1,12 +1,28 @@
 #include "handmade.h"
 
-void RunderWierdGradient(game_offscreen_buffer* Buffer, int BlueOffset, int GreenOffset)
+void UpdateSound(game_sound_buffer* Buffer, int32_t Tone)
+{
+	static float tSine;
+	int16_t ToneVolume = 3000;
+	int32_t WavePeriod = Buffer->SampleRate / Tone;
+
+	int16_t* SampleOut = (int16_t*)Buffer->Memory;
+	for (int SampleIndex = 0; SampleIndex < Buffer->SampleCount; SampleIndex++)
+	{
+		int16_t SampleValue = (int16_t)(ToneVolume * sinf(tSine));
+		*SampleOut++ = SampleValue;
+		*SampleOut++ = SampleValue;
+		tSine += 2.0f * PI32 * 1.0f / (float)WavePeriod;
+	}
+}
+
+void UpdateVideo(game_video_buffer* Buffer, int32_t BlueOffset, int32_t GreenOffset)
 {
 	uint8_t* Row = (uint8_t*)Buffer->Memory;
-	for (int y = 0; y < Buffer->Height; y++)
+	for (int32_t y = 0; y < Buffer->Height; y++)
 	{
 		uint32_t* Pixel = (uint32_t*)Row;
-		for (int x = 0; x < Buffer->Width; x++)
+		for (int32_t x = 0; x < Buffer->Width; x++)
 		{
 			uint8_t Blue = (x + BlueOffset);
 			uint8_t Green = (y + GreenOffset);
@@ -16,7 +32,8 @@ void RunderWierdGradient(game_offscreen_buffer* Buffer, int BlueOffset, int Gree
 	}
 }
 
-void GameUpdateAndRender(game_offscreen_buffer* Buffer, int BlueOffset, int GreenOffset)
+void GameUpdateAndRender(game_video_buffer* VideoBuffer, int32_t BlueOffset, int32_t GreenOffset, game_sound_buffer* SoundBuffer, int32_t Tone)
 {
-	RunderWierdGradient(Buffer, BlueOffset, GreenOffset);
+	UpdateSound(SoundBuffer, Tone);
+	UpdateVideo(VideoBuffer, BlueOffset, GreenOffset);
 }
