@@ -32,8 +32,39 @@ void UpdateVideo(game_video_buffer* Buffer, int32_t BlueOffset, int32_t GreenOff
 	}
 }
 
-void GameUpdateAndRender(game_video_buffer* VideoBuffer, int32_t BlueOffset, int32_t GreenOffset, game_sound_buffer* SoundBuffer, int32_t Tone)
+void GameUpdateAndRender(game_memory* Memory, game_video_buffer* Video, game_sound_buffer* Sound, game_input* Input)
 {
-	UpdateSound(SoundBuffer, Tone);
-	UpdateVideo(VideoBuffer, BlueOffset, GreenOffset);
+	Assert(sizeof(game_state) <= Memory->PermanentStorageSize);
+
+	game_state* GameState = (game_state*)Memory->PermanentStorage;
+	if (!Memory->IsInitialised)
+	{
+		GameState->Tone = 256;
+		Memory->IsInitialised = true;
+	}
+
+	game_controller_input* Input0 = &Input->Controllers[0];
+
+	if (Input0->IsAnalog)
+	{
+		GameState->BlueOffset += (int32_t)(4.0f * Input0->EndX);
+		GameState->GreenOffset += (int32_t)(4.0f * Input0->EndY);
+	}
+	else
+	{
+
+	}
+
+	if (Input0->Up.EndedDown)
+	{
+		GameState->Tone++;
+	}
+
+	if (Input0->Down.EndedDown)
+	{
+		GameState->Tone--;
+	}
+
+	UpdateSound(Sound, GameState->Tone);
+	UpdateVideo(Video, GameState->BlueOffset, GameState->GreenOffset);
 }
