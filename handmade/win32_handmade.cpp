@@ -24,6 +24,86 @@ static x_input_set_state* XInputSetState_ = XInputSetStateStub;
 #define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND* ppDS, LPUNKNOWN pUnkOuter)
 typedef DIRECT_SOUND_CREATE(direct_sound_create);
 
+debug_real_file_result DEBUGPlatformReadEntireFile(wchar_t* Filename)
+{
+	debug_real_file_result Result = {};
+
+	HANDLE FileHandle = CreateFile(Filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, NULL, NULL);
+	if (FileHandle != INVALID_HANDLE_VALUE)
+	{
+		LARGE_INTEGER FileSize64;
+		if (GetFileSizeEx(FileHandle, &FileSize64))
+		{
+			DWORD FileSize32 = SafeTruncate64To32(FileSize64.QuadPart);
+			Result.Bytes = VirtualAlloc(NULL, FileSize32, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+			if (Result.Bytes)
+			{
+				DWORD BytesRead;
+				if (ReadFile(FileHandle, Result.Bytes, FileSize32, &BytesRead, NULL) && (BytesRead == FileSize32))
+				{
+					// read from file succesfullly
+					Result.Size = FileSize32;
+				}
+				else
+				{
+					// failed to read from file
+					DEBUGFreeFileFromMemory(Result.Bytes);
+					Result.Size = 0;
+				}
+			}
+			else
+			{
+				// failed to allocate memory
+			}
+		}
+		else
+		{
+			// failed to get file size
+		}
+		CloseHandle(FileHandle);
+	}
+	else
+	{
+		// failed to open file
+	}
+	return Result;
+}
+
+void DEBUGFreeFileFromMemory(void* Memory)
+{
+	if (Memory)
+	{
+		VirtualFree(Memory, NULL, MEM_RELEASE);
+	}
+
+}
+
+bool DEBUGPlatformWriteEntireFile(wchar_t* Filename, uint32_t FileSize, void* Bytes)
+{
+	bool Result = false;
+
+	HANDLE FileHandle = CreateFile(Filename, GENERIC_WRITE, NULL, NULL, CREATE_ALWAYS, NULL, NULL);
+	if (FileHandle != INVALID_HANDLE_VALUE)
+	{
+		DWORD BytesWritten;
+		if (WriteFile(FileHandle, Bytes, FileSize, &BytesWritten, NULL) && (BytesWritten == FileSize))
+		{
+			// wrote to file succesfullly
+			Result = true;
+		}
+		else
+		{
+			// failed to write to file
+		}
+		CloseHandle(FileHandle);
+	}
+	else
+	{
+		// failed to open file
+	}
+	return Result;
+}
+
 static void Win32LoadXInput(void)
 {
 	HMODULE XInputLibrary = NULL;

@@ -18,6 +18,23 @@ constexpr auto PI32 = 3.14159265359f;
 
 #define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
 
+static uint32_t SafeTruncate64To32(uint64_t value)
+{
+	Assert(value <= 0xFFFFFF);
+	return (uint32_t)value;
+}
+
+#if _DEBUG
+struct debug_real_file_result
+{
+	uint32_t Size;
+	void* Bytes;
+};
+debug_real_file_result DEBUGPlatformReadEntireFile(wchar_t* Filename);
+bool DEBUGPlatformWriteEntireFile(wchar_t* Filename, uint32_t FileSize, void* Bytes);
+void DEBUGFreeFileFromMemory(void* Memory);
+#endif
+
 struct game_state
 {
 	int32_t BlueOffset;

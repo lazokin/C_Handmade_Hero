@@ -39,6 +39,18 @@ void GameUpdateAndRender(game_memory* Memory, game_video_buffer* Video, game_sou
 	game_state* GameState = (game_state*)Memory->PermanentStorage;
 	if (!Memory->IsInitialised)
 	{
+		wchar_t SrcFileName[] = L"data\\file_src.txt";
+		wchar_t DstFileName[] = L"data\\file_dst.txt";
+
+		debug_real_file_result File = DEBUGPlatformReadEntireFile(SrcFileName);
+		
+		if (File.Bytes)
+		{
+			DEBUGPlatformWriteEntireFile(DstFileName, File.Size, File.Bytes);
+			DEBUGFreeFileFromMemory(File.Bytes);
+		}
+
+
 		GameState->Tone = 256;
 		Memory->IsInitialised = true;
 	}
