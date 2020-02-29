@@ -40,6 +40,7 @@ void UpdateVideo(game_video_buffer* Buffer, int32_t BlueOffset, int32_t GreenOff
 
 void GameUpdateAndRender(game_memory* Memory, game_video_buffer* Video, game_sound_buffer* Sound, game_input* Input)
 {
+	Assert(&Input->Controllers[0].Sentinal - &Input->Controllers[0].Buttons[0] == ArrayCount(Input->Controllers[0].Buttons));
 	Assert(sizeof(game_state) <= Memory->PermanentStorageSize);
 
 	game_state* GameState = (game_state*)Memory->PermanentStorage;
@@ -56,31 +57,54 @@ void GameUpdateAndRender(game_memory* Memory, game_video_buffer* Video, game_sou
 			DEBUGFreeFileFromMemory(File.Bytes);
 		}
 
-
 		GameState->Tone = 256;
 		Memory->IsInitialised = true;
 	}
 
-	game_controller_input* Input0 = &Input->Controllers[0];
-
-	if (Input0->IsAnalog)
+	for (int ControllerIndex = 0; ControllerIndex < ArrayCount(Input->Controllers); ControllerIndex++)
 	{
-		GameState->BlueOffset += (int32_t)(4.0f * Input0->EndX);
-		GameState->GreenOffset += (int32_t)(4.0f * Input0->EndY);
-	}
-	else
-	{
+		game_controller_input* Controller = &Input->Controllers[ControllerIndex];
 
-	}
+		if (Controller->MoveUp.EndedDown)
+		{
+			GameState->GreenOffset--;
+		}
 
-	if (Input0->Up.EndedDown)
-	{
-		GameState->Tone++;
-	}
+		if (Controller->MoveDown.EndedDown)
+		{
+			GameState->GreenOffset++;
+		}
 
-	if (Input0->Down.EndedDown)
-	{
-		GameState->Tone--;
+		if (Controller->MoveLeft.EndedDown)
+		{
+			GameState->BlueOffset--;
+		}
+
+		if (Controller->MoveRight.EndedDown)
+		{
+			GameState->BlueOffset++;
+		}
+
+		if (Controller->IsAnalog)
+		{
+			if (Controller->StickAverageX > 0.5f)
+			{
+				GameState->Tone++;
+			}
+			if (Controller->StickAverageX < -0.5f)
+			{
+				GameState->Tone--;
+			}
+			if (Controller->StickAverageY > 0.5f)
+			{
+				GameState->Tone++;
+			}
+			if (Controller->StickAverageY < -0.5f)
+			{
+				GameState->Tone--;
+			}
+		}
+
 	}
 
 	UpdateSound(Sound, GameState->Tone);

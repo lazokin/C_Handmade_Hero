@@ -71,28 +71,41 @@ struct game_button_state
 
 struct game_controller_input
 {
+	bool IsConnected;
 	bool IsAnalog;
+	float StickAverageX;
+	float StickAverageY;
 
-	float StartX;
-	float StartY;
-	float EndX;
-	float EndY;
-	float MinX;
-	float MinY;
-	float MaxX;
-	float MaxY;
+	union {
+		game_button_state Buttons[12];
+		struct {
+			game_button_state MoveUp;
+			game_button_state MoveDown;
+			game_button_state MoveLeft;
+			game_button_state MoveRight;
+			game_button_state ActionUp;
+			game_button_state ActionDown;
+			game_button_state ActionLeft;
+			game_button_state ActionRight;
+			game_button_state LeftShoulder;
+			game_button_state RightShoulder;
+			game_button_state Start;
+			game_button_state Back;
 
-	game_button_state Up;
-	game_button_state Down;
-	game_button_state Left;
-	game_button_state Right;
-	game_button_state LeftShoulder;
-	game_button_state RightShoulder;
+			game_button_state Sentinal;
+		};
+	};
 };
 
 struct game_input
 {
-	game_controller_input Controllers[4];
+	game_controller_input Controllers[5];
 };
+
+inline game_controller_input* GetController(game_input* Input, uint32_t ControllerIndex)
+{
+	Assert(ControllerIndex < ArrayCount(Input->Controllers));
+	return &Input->Controllers[ControllerIndex];
+}
 
 void GameUpdateAndRender(game_memory* Memory, game_video_buffer* Video, game_sound_buffer* Sound, game_input* Input);
