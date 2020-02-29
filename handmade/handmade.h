@@ -18,11 +18,7 @@ constexpr auto PI32 = 3.14159265359f;
 
 #define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
 
-static uint32_t SafeTruncate64To32(uint64_t value)
-{
-	Assert(value <= 0xFFFFFF);
-	return (uint32_t)value;
-}
+uint32_t SafeTruncate64To32(uint64_t value);
 
 #if _DEBUG
 struct debug_real_file_result

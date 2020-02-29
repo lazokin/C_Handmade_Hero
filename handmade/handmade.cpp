@@ -1,5 +1,11 @@
 #include "handmade.h"
 
+uint32_t SafeTruncate64To32(uint64_t value)
+{
+	Assert(value <= 0xFFFFFF);
+	return (uint32_t)value;
+}
+
 void UpdateSound(game_sound_buffer* Buffer, int32_t Tone)
 {
 	static float tSine;
@@ -24,8 +30,8 @@ void UpdateVideo(game_video_buffer* Buffer, int32_t BlueOffset, int32_t GreenOff
 		uint32_t* Pixel = (uint32_t*)Row;
 		for (int32_t x = 0; x < Buffer->Width; x++)
 		{
-			uint8_t Blue = (x + BlueOffset);
-			uint8_t Green = (y + GreenOffset);
+			uint8_t Blue = (uint8_t)(x + BlueOffset);
+			uint8_t Green = (uint8_t)(y + GreenOffset);
 			*Pixel++ = ((Green << 8) | Blue);
 		}
 		Row += Buffer->Pitch;
